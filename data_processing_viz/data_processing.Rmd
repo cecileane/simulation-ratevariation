@@ -1,0 +1,205 @@
+---
+title: "data_processing.Rmd"
+output: html_document
+date: "2022-10-13"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readr)
+library(dplyr)
+library(stringr)
+```
+
+## Extracting paramset info from dir paths
+```{r}
+df1 = "10-taxa_1000-genes_1000-sites_0.0-lindist_0.0-linbygenedist_0.0-genedist_0.0-edgedist_0.03-subrate_1.0-coalmedian"
+df2 = "10-taxa_1000-genes_1000-sites_0.0-lindist_0.0-linbygenedist_0.0-genedist_0.7-edgedist_0.03-subrate_1.0-coalmedian"
+df3 = "10-taxa_1000-genes_1000-sites_0.0-lindist_0.0-linbygenedist_0.7-genedist_0.0-edgedist_0.03-subrate_1.0-coalmedian"
+df4 = "10-taxa_1000-genes_1000-sites_0.0-lindist_0.0-linbygenedist_0.7-genedist_0.7-edgedist_0.03-subrate_1.0-coalmedian"
+df5 = "10-taxa_1000-genes_1000-sites_0.0-lindist_0.7-linbygenedist_0.0-genedist_0.0-edgedist_0.03-subrate_1.0-coalmedian"
+df6 = "10-taxa_1000-genes_1000-sites_0.0-lindist_0.7-linbygenedist_0.0-genedist_0.7-edgedist_0.03-subrate_1.0-coalmedian"
+df7 = "10-taxa_1000-genes_1000-sites_0.0-lindist_0.7-linbygenedist_0.7-genedist_0.0-edgedist_0.03-subrate_1.0-coalmedian"
+df8 = "10-taxa_1000-genes_1000-sites_0.0-lindist_0.7-linbygenedist_0.7-genedist_0.7-edgedist_0.03-subrate_1.0-coalmedian"
+df9 = "10-taxa_1000-genes_1000-sites_0.7-lindist_0.0-linbygenedist_0.0-genedist_0.0-edgedist_0.03-subrate_1.0-coalmedian"
+df10 = "10-taxa_1000-genes_1000-sites_0.7-lindist_0.0-linbygenedist_0.0-genedist_0.7-edgedist_0.03-subrate_1.0-coalmedian"
+df11 = "10-taxa_1000-genes_1000-sites_0.7-lindist_0.0-linbygenedist_0.7-genedist_0.0-edgedist_0.03-subrate_1.0-coalmedian"
+df12 = "10-taxa_1000-genes_1000-sites_0.7-lindist_0.0-linbygenedist_0.7-genedist_0.7-edgedist_0.03-subrate_1.0-coalmedian"
+df13 = "10-taxa_1000-genes_1000-sites_0.7-lindist_0.7-linbygenedist_0.0-genedist_0.0-edgedist_0.03-subrate_1.0-coalmedian"
+df14 = "10-taxa_1000-genes_1000-sites_0.7-lindist_0.7-linbygenedist_0.0-genedist_0.7-edgedist_0.03-subrate_1.0-coalmedian"
+df15 = "10-taxa_1000-genes_1000-sites_0.7-lindist_0.7-linbygenedist_0.7-genedist_0.0-edgedist_0.03-subrate_1.0-coalmedian"
+df16 = "10-taxa_1000-genes_1000-sites_0.7-lindist_0.7-linbygenedist_0.7-genedist_0.7-edgedist_0.03-subrate_1.0-coalmedian"
+
+dir_info_extraction = function(filepath){
+  split_dir = str_split(filepath, "_")
+  coalmedian = str_split(split_dir[[1]][[9]], "-")[[1]][[1]]
+  subrate = str_split(split_dir[[1]][[8]], "-")[[1]][[1]]
+  lindist = str_split(split_dir[[1]][[4]], "-")[[1]][[1]]
+  linbygenedist = str_split(split_dir[[1]][[5]], "-")[[1]][[1]]
+  genedist = str_split(split_dir[[1]][[6]], "-")[[1]][[1]]
+  edgedist = str_split(split_dir[[1]][[7]], "-")[[1]][[1]]
+  return(c(coalmedian, subrate, lindist, linbygenedist, genedist, edgedist))
+}
+
+df1_params = dir_info_extraction(df1)
+df2_params = dir_info_extraction(df2)
+df3_params = dir_info_extraction(df3)
+df4_params = dir_info_extraction(df4)
+df5_params = dir_info_extraction(df5)
+df6_params = dir_info_extraction(df6)
+df7_params = dir_info_extraction(df7)
+df8_params = dir_info_extraction(df8)
+df9_params = dir_info_extraction(df9)
+df10_params = dir_info_extraction(df10)
+df11_params = dir_info_extraction(df11)
+df12_params = dir_info_extraction(df12)
+df13_params = dir_info_extraction(df13)
+df14_params = dir_info_extraction(df14)
+df15_params = dir_info_extraction(df15)
+df16_params = dir_info_extraction(df16)
+```
+
+## Loading in data- D3
+```{r}
+d3_1 = read_csv(str_interp("../output/${df1}/concat_d3.csv"), col_types = cols(Rep = col_integer()))
+d3_2 = read_csv(str_interp("../output/${df2}/concat_d3.csv"), col_types = cols(Rep = col_integer()))
+d3_3 = read_csv(str_interp("../output/${df3}/concat_d3.csv"), col_types = cols(Rep = col_integer()))
+d3_4 = read_csv(str_interp("../output/${df4}/concat_d3.csv"), col_types = cols(Rep = col_integer()))
+d3_5 = read_csv(str_interp("../output/${df5}/concat_d3.csv"), col_types = cols(Rep = col_integer()))
+d3_6 = read_csv(str_interp("../output/${df6}/concat_d3.csv"), col_types = cols(Rep = col_integer()))
+d3_7 = read_csv(str_interp("../output/${df7}/concat_d3.csv"), col_types = cols(Rep = col_integer()))
+d3_8 = read_csv(str_interp("../output/${df8}/concat_d3.csv"), col_types = cols(Rep = col_integer()))
+d3_9 = read_csv(str_interp("../output/${df9}/concat_d3.csv"), col_types = cols(Rep = col_integer()))
+d3_10 = read_csv(str_interp("../output/${df10}/concat_d3.csv"), col_types = cols(Rep = col_integer()))
+d3_11 = read_csv(str_interp("../output/${df11}/concat_d3.csv"), col_types = cols(Rep = col_integer()))
+d3_12 = read_csv(str_interp("../output/${df12}/concat_d3.csv"), col_types = cols(Rep = col_integer()))
+d3_13 = read_csv(str_interp("../output/${df13}/concat_d3.csv"), col_types = cols(Rep = col_integer()))
+d3_14 = read_csv(str_interp("../output/${df14}/concat_d3.csv"), col_types = cols(Rep = col_integer()))
+d3_15 = read_csv(str_interp("../output/${df15}/concat_d3.csv"), col_types = cols(Rep = col_integer()))
+d3_16 = read_csv(str_interp("../output/${df16}/concat_d3.csv"), col_types = cols(Rep = col_integer()))
+
+#insert cols with info on how each dataset was generated
+d3_1 = mutate(d3_1, coalmedian = df1_params[1], subrate = df1_params[2], lindist = df1_params[3], linbygenedist = df1_params[4], genedist = df1_params[5], edgedist = df1_params[6], simid= 1)
+d3_2 = mutate(d3_2, coalmedian = df2_params[1], subrate = df2_params[2], lindist = df2_params[3], linbygenedist = df2_params[4], genedist = df2_params[5], edgedist = df2_params[6], simid= 2)
+d3_3 = mutate(d3_3, coalmedian = df3_params[1], subrate = df3_params[2], lindist = df3_params[3], linbygenedist = df3_params[4], genedist = df3_params[5], edgedist = df3_params[6], simid= 3)
+d3_4 = mutate(d3_4, coalmedian = df4_params[1], subrate = df4_params[2], lindist = df4_params[3], linbygenedist = df4_params[4], genedist = df4_params[5], edgedist = df4_params[6], simid= 4)
+d3_5 = mutate(d3_5, coalmedian = df5_params[1], subrate = df5_params[2], lindist = df5_params[3], linbygenedist = df5_params[4], genedist = df5_params[5], edgedist = df5_params[6], simid= 5)
+d3_6 = mutate(d3_6, coalmedian = df6_params[1], subrate = df6_params[2], lindist = df6_params[3], linbygenedist = df6_params[4], genedist = df6_params[5], edgedist = df6_params[6], simid= 6)
+d3_7 = mutate(d3_7, coalmedian = df7_params[1], subrate = df7_params[2], lindist = df7_params[3], linbygenedist = df7_params[4], genedist = df7_params[5], edgedist = df7_params[6], simid= 7)
+d3_8 = mutate(d3_8, coalmedian = df8_params[1], subrate = df8_params[2], lindist = df8_params[3], linbygenedist = df8_params[4], genedist = df8_params[5], edgedist = df8_params[6], simid= 8)
+d3_9 = mutate(d3_9, coalmedian = df9_params[1], subrate = df9_params[2], lindist = df9_params[3], linbygenedist = df9_params[4], genedist = df9_params[5], edgedist = df9_params[6], simid= 9)
+d3_10 = mutate(d3_10, coalmedian = df10_params[1], subrate = df10_params[2], lindist = df10_params[3], linbygenedist = df10_params[4], genedist = df10_params[5], edgedist = df10_params[6], simid= 10)
+d3_11 = mutate(d3_11, coalmedian = df11_params[1], subrate = df11_params[2], lindist = df11_params[3], linbygenedist = df11_params[4], genedist = df11_params[5], edgedist = df11_params[6], simid= 11)
+d3_12 = mutate(d3_12, coalmedian = df12_params[1], subrate = df12_params[2], lindist = df12_params[3], linbygenedist = df12_params[4], genedist = df12_params[5], edgedist = df12_params[6], simid= 12)
+d3_13 = mutate(d3_13, coalmedian = df13_params[1], subrate = df13_params[2], lindist = df13_params[3], linbygenedist = df13_params[4], genedist = df13_params[5], edgedist = df13_params[6], simid= 13)
+d3_14 = mutate(d3_14, coalmedian = df14_params[1], subrate = df14_params[2], lindist = df14_params[3], linbygenedist = df14_params[4], genedist = df14_params[5], edgedist = df14_params[6], simid= 14)
+d3_15 = mutate(d3_15, coalmedian = df15_params[1], subrate = df15_params[2], lindist = df15_params[3], linbygenedist = df15_params[4], genedist = df15_params[5], edgedist = df15_params[6], simid= 15)
+d3_16 = mutate(d3_16, coalmedian = df16_params[1], subrate = df16_params[2], lindist = df16_params[3], linbygenedist = df16_params[4], genedist = df16_params[5], edgedist = df16_params[6], simid= 16)
+
+alldatasets_d3 = bind_rows(d3_1, d3_2, d3_3, d3_4, d3_5, d3_6, d3_7, d3_8, d3_9, d3_10, d3_11, d3_12, d3_13, d3_14, d3_15, d3_16)
+
+# add 'taxonset' column: 3 ingroup taxa sorted & concatenated in a single string (same as for HyDe)
+alldatasets_d3 = alldatasets_d3 %>% rowwise() %>% mutate(taxonset = paste(sort(c(taxa2, taxa3, taxa4)), collapse=","))
+```
+
+## Loading in data- D
+```{r}
+dstat_1 = read_csv(str_interp("../output/${df1}/concat_dstat.csv"), col_types = cols(Rep = col_integer()))
+dstat_2 = read_csv(str_interp("../output/${df2}/concat_dstat.csv"), col_types = cols(Rep = col_integer()))
+dstat_3 = read_csv(str_interp("../output/${df3}/concat_dstat.csv"), col_types = cols(Rep = col_integer()))
+dstat_4 = read_csv(str_interp("../output/${df4}/concat_dstat.csv"), col_types = cols(Rep = col_integer()))
+dstat_5 = read_csv(str_interp("../output/${df5}/concat_dstat.csv"), col_types = cols(Rep = col_integer()))
+dstat_6 = read_csv(str_interp("../output/${df6}/concat_dstat.csv"), col_types = cols(Rep = col_integer()))
+dstat_7 = read_csv(str_interp("../output/${df7}/concat_dstat.csv"), col_types = cols(Rep = col_integer()))
+dstat_8 = read_csv(str_interp("../output/${df8}/concat_dstat.csv"), col_types = cols(Rep = col_integer()))
+dstat_9 = read_csv(str_interp("../output/${df9}/concat_dstat.csv"), col_types = cols(Rep = col_integer()))
+dstat_10 = read_csv(str_interp("../output/${df10}/concat_dstat.csv"), col_types = cols(Rep = col_integer()))
+dstat_11 = read_csv(str_interp("../output/${df11}/concat_dstat.csv"), col_types = cols(Rep = col_integer()))
+dstat_12 = read_csv(str_interp("../output/${df12}/concat_dstat.csv"), col_types = cols(Rep = col_integer()))
+dstat_13 = read_csv(str_interp("../output/${df13}/concat_dstat.csv"), col_types = cols(Rep = col_integer()))
+dstat_14 = read_csv(str_interp("../output/${df14}/concat_dstat.csv"), col_types = cols(Rep = col_integer()))
+dstat_15 = read_csv(str_interp("../output/${df15}/concat_dstat.csv"), col_types = cols(Rep = col_integer()))
+dstat_16 = read_csv(str_interp("../output/${df16}/concat_dstat.csv"), col_types = cols(Rep = col_integer()))
+
+#insert cols with info on how each dataset was generated
+dstat_1 = mutate(dstat_1, coalmedian = df1_params[1], subrate = df1_params[2], lindist = df1_params[3], linbygenedist = df1_params[4], genedist = df1_params[5], edgedist = df1_params[6], simid= 1)
+dstat_2 = mutate(dstat_2, coalmedian = df2_params[1], subrate = df2_params[2], lindist = df2_params[3], linbygenedist = df2_params[4], genedist = df2_params[5], edgedist = df2_params[6], simid= 2)
+dstat_3 = mutate(dstat_3, coalmedian = df3_params[1], subrate = df3_params[2], lindist = df3_params[3], linbygenedist = df3_params[4], genedist = df3_params[5], edgedist = df3_params[6], simid= 3)
+dstat_4 = mutate(dstat_4, coalmedian = df4_params[1], subrate = df4_params[2], lindist = df4_params[3], linbygenedist = df4_params[4], genedist = df4_params[5], edgedist = df4_params[6], simid= 4)
+dstat_5 = mutate(dstat_5, coalmedian = df5_params[1], subrate = df5_params[2], lindist = df5_params[3], linbygenedist = df5_params[4], genedist = df5_params[5], edgedist = df5_params[6], simid= 5)
+dstat_6 = mutate(dstat_6, coalmedian = df6_params[1], subrate = df6_params[2], lindist = df6_params[3], linbygenedist = df6_params[4], genedist = df6_params[5], edgedist = df6_params[6], simid= 6)
+dstat_7 = mutate(dstat_7, coalmedian = df7_params[1], subrate = df7_params[2], lindist = df7_params[3], linbygenedist = df7_params[4], genedist = df7_params[5], edgedist = df7_params[6], simid= 7)
+dstat_8 = mutate(dstat_8, coalmedian = df8_params[1], subrate = df8_params[2], lindist = df8_params[3], linbygenedist = df8_params[4], genedist = df8_params[5], edgedist = df8_params[6], simid= 8)
+dstat_9 = mutate(dstat_9, coalmedian = df9_params[1], subrate = df9_params[2], lindist = df9_params[3], linbygenedist = df9_params[4], genedist = df9_params[5], edgedist = df9_params[6], simid= 9)
+dstat_10 = mutate(dstat_10, coalmedian = df10_params[1], subrate = df10_params[2], lindist = df10_params[3], linbygenedist = df10_params[4], genedist = df10_params[5], edgedist = df10_params[6], simid= 10)
+dstat_11 = mutate(dstat_11, coalmedian = df11_params[1], subrate = df11_params[2], lindist = df11_params[3], linbygenedist = df11_params[4], genedist = df11_params[5], edgedist = df11_params[6], simid= 11)
+dstat_12 = mutate(dstat_12, coalmedian = df12_params[1], subrate = df12_params[2], lindist = df12_params[3], linbygenedist = df12_params[4], genedist = df12_params[5], edgedist = df12_params[6], simid= 12)
+dstat_13 = mutate(dstat_13, coalmedian = df13_params[1], subrate = df13_params[2], lindist = df13_params[3], linbygenedist = df13_params[4], genedist = df13_params[5], edgedist = df13_params[6], simid= 13)
+dstat_14 = mutate(dstat_14, coalmedian = df14_params[1], subrate = df14_params[2], lindist = df14_params[3], linbygenedist = df14_params[4], genedist = df14_params[5], edgedist = df14_params[6], simid= 14)
+dstat_15 = mutate(dstat_15, coalmedian = df15_params[1], subrate = df15_params[2], lindist = df15_params[3], linbygenedist = df15_params[4], genedist = df15_params[5], edgedist = df15_params[6], simid= 15)
+dstat_16 = mutate(dstat_16, coalmedian = df16_params[1], subrate = df16_params[2], lindist = df16_params[3], linbygenedist = df16_params[4], genedist = df16_params[5], edgedist = df16_params[6], simid= 16)
+
+alldatasets_dstat = bind_rows(dstat_1, dstat_2, dstat_3, dstat_4, dstat_5, dstat_6, dstat_7, dstat_8, dstat_9, dstat_10, dstat_11, dstat_12, dstat_13, dstat_14, dstat_15, dstat_16)
+```
+
+## Loading in data- HyDe
+```{r}
+hyde_1 = read_csv(str_interp("../output/${df1}/concat_hyde.csv"), col_types = cols(Rep = col_integer()))
+hyde_2 = read_csv(str_interp("../output/${df2}/concat_hyde.csv"), col_types = cols(Rep = col_integer()))
+hyde_3 = read_csv(str_interp("../output/${df3}/concat_hyde.csv"), col_types = cols(Rep = col_integer()))
+hyde_4 = read_csv(str_interp("../output/${df4}/concat_hyde.csv"), col_types = cols(Rep = col_integer()))
+hyde_5 = read_csv(str_interp("../output/${df5}/concat_hyde.csv"), col_types = cols(Rep = col_integer()))
+hyde_6 = read_csv(str_interp("../output/${df6}/concat_hyde.csv"), col_types = cols(Rep = col_integer()))
+hyde_7 = read_csv(str_interp("../output/${df7}/concat_hyde.csv"), col_types = cols(Rep = col_integer()))
+hyde_8 = read_csv(str_interp("../output/${df8}/concat_hyde.csv"), col_types = cols(Rep = col_integer()))
+hyde_9 = read_csv(str_interp("../output/${df9}/concat_hyde.csv"), col_types = cols(Rep = col_integer()))
+hyde_10 = read_csv(str_interp("../output/${df10}/concat_hyde.csv"), col_types = cols(Rep = col_integer()))
+hyde_11 = read_csv(str_interp("../output/${df11}/concat_hyde.csv"), col_types = cols(Rep = col_integer()))
+hyde_12 = read_csv(str_interp("../output/${df12}/concat_hyde.csv"), col_types = cols(Rep = col_integer()))
+hyde_13 = read_csv(str_interp("../output/${df13}/concat_hyde.csv"), col_types = cols(Rep = col_integer()))
+hyde_14 = read_csv(str_interp("../output/${df14}/concat_hyde.csv"), col_types = cols(Rep = col_integer()))
+hyde_15 = read_csv(str_interp("../output/${df15}/concat_hyde.csv"), col_types = cols(Rep = col_integer()))
+hyde_16 = read_csv(str_interp("../output/${df16}/concat_hyde.csv"), col_types = cols(Rep = col_integer()))
+
+#insert cols with info on how each dataset was generated
+hyde_1 = mutate(hyde_1, coalmedian = df1_params[1], subrate = df1_params[2], lindist = df1_params[3], linbygenedist = df1_params[4], genedist = df1_params[5], edgedist = df1_params[6], simid= 1)
+hyde_2 = mutate(hyde_2, coalmedian = df2_params[1], subrate = df2_params[2], lindist = df2_params[3], linbygenedist = df2_params[4], genedist = df2_params[5], edgedist = df2_params[6], simid= 2)
+hyde_3 = mutate(hyde_3, coalmedian = df3_params[1], subrate = df3_params[2], lindist = df3_params[3], linbygenedist = df3_params[4], genedist = df3_params[5], edgedist = df3_params[6], simid= 3)
+hyde_4 = mutate(hyde_4, coalmedian = df4_params[1], subrate = df4_params[2], lindist = df4_params[3], linbygenedist = df4_params[4], genedist = df4_params[5], edgedist = df4_params[6], simid= 4)
+hyde_5 = mutate(hyde_5, coalmedian = df5_params[1], subrate = df5_params[2], lindist = df5_params[3], linbygenedist = df5_params[4], genedist = df5_params[5], edgedist = df5_params[6], simid= 5)
+hyde_6 = mutate(hyde_6, coalmedian = df6_params[1], subrate = df6_params[2], lindist = df6_params[3], linbygenedist = df6_params[4], genedist = df6_params[5], edgedist = df6_params[6], simid= 6)
+hyde_7 = mutate(hyde_7, coalmedian = df7_params[1], subrate = df7_params[2], lindist = df7_params[3], linbygenedist = df7_params[4], genedist = df7_params[5], edgedist = df7_params[6], simid= 7)
+hyde_8 = mutate(hyde_8, coalmedian = df8_params[1], subrate = df8_params[2], lindist = df8_params[3], linbygenedist = df8_params[4], genedist = df8_params[5], edgedist = df8_params[6], simid= 8)
+hyde_9 = mutate(hyde_9, coalmedian = df9_params[1], subrate = df9_params[2], lindist = df9_params[3], linbygenedist = df9_params[4], genedist = df9_params[5], edgedist = df9_params[6], simid= 9)
+hyde_10 = mutate(hyde_10, coalmedian = df10_params[1], subrate = df10_params[2], lindist = df10_params[3], linbygenedist = df10_params[4], genedist = df10_params[5], edgedist = df10_params[6], simid= 10)
+hyde_11 = mutate(hyde_11, coalmedian = df11_params[1], subrate = df11_params[2], lindist = df11_params[3], linbygenedist = df11_params[4], genedist = df11_params[5], edgedist = df11_params[6], simid= 11)
+hyde_12 = mutate(hyde_12, coalmedian = df12_params[1], subrate = df12_params[2], lindist = df12_params[3], linbygenedist = df12_params[4], genedist = df12_params[5], edgedist = df12_params[6], simid= 12)
+hyde_13 = mutate(hyde_13, coalmedian = df13_params[1], subrate = df13_params[2], lindist = df13_params[3], linbygenedist = df13_params[4], genedist = df13_params[5], edgedist = df13_params[6], simid= 13)
+hyde_14 = mutate(hyde_14, coalmedian = df14_params[1], subrate = df14_params[2], lindist = df14_params[3], linbygenedist = df14_params[4], genedist = df14_params[5], edgedist = df14_params[6], simid= 14)
+hyde_15 = mutate(hyde_15, coalmedian = df15_params[1], subrate = df15_params[2], lindist = df15_params[3], linbygenedist = df15_params[4], genedist = df15_params[5], edgedist = df15_params[6], simid= 15)
+hyde_16 = mutate(hyde_16, coalmedian = df16_params[1], subrate = df16_params[2], lindist = df16_params[3], linbygenedist = df16_params[4], genedist = df16_params[5], edgedist = df16_params[6], simid= 16)
+
+#combine all datasets into 1
+alldatasets_hyde = bind_rows(hyde_1, hyde_2, hyde_3, hyde_4, hyde_5, hyde_6, hyde_7, hyde_8, hyde_9, hyde_10, hyde_11, hyde_12, hyde_13, hyde_14, hyde_15, hyde_16)
+
+#add gamma diff col for hyde
+#has NAs for rows where there is no real Gamma (Gamma1)
+alldatasets_hyde = mutate(alldatasets_hyde, GammaDiff=Gamma1-HyDeGamma)
+
+#create filtered hyde dataset that corrects for all possible iterations of a triplet and gives an adjusted pval col w Bonferroni correction
+filtered_concathyde = alldatasets_hyde %>% rowwise() %>% mutate(taxonset = paste(sort(c(P1, Hybrid, P2)), collapse=","))
+filtered_concathyde = filtered_concathyde %>% group_by(taxonset, Rep, simid) %>% arrange(Pvalue, desc=TRUE) %>% slice(1) %>% mutate(adjPvalue = min(3*Pvalue,1))
+
+#rename columns for Pvals
+filtered_concathyde = filtered_concathyde %>% rename(Pvalue = adjPvalue, origPvalue = Pvalue)
+```
+
+
+```{r}
+write.csv(alldatasets_dstat, file = "../output/alldatasets_dstat.csv")
+write.csv(filtered_concathyde, file = "../output/alldatasets_hyde_filtered.csv")
+write.csv(alldatasets_d3, file = "../output/alldatasets_d3.csv")
+```

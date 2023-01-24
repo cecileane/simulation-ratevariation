@@ -1,0 +1,623 @@
+---
+title: "updatedD3viz.Rmd"
+output: html_document
+date: "2022-09-20"
+---
+
+```{r setup, include=FALSE}
+library(readr)
+library(ggplot2)
+library(ggforce)
+library(ggpubr)
+library(dplyr)
+library(stringr)
+library(forcats)
+options(show.signif.stars=F)
+```
+
+# Load in datasets
+
+```{r, message=F}
+concat_d3 = read_csv("../output/alldatasets_d3.csv", col_types = cols(Rep = col_integer()))
+concat_dstat = read_csv("../output/alldatasets_dstat.csv", col_types = cols(Rep = col_integer()))
+filtered_concat_hyde = read_csv("../output/alldatasets_hyde_filtered.csv", col_types = cols(Rep = col_integer()))
+```
+
+sanity checks, for equal number of rows for D, D3 and HyDe results:
+
+```{r}
+stopifnot(nrow(concat_dstat) == nrow(concat_d3)) # 79902
+stopifnot(nrow(concat_dstat) == nrow(filtered_concat_hyde)) # 79902
+```
+
+# violin plots
+
+## Visualizing D3 results
+
+```{r}
+viz_violin = function(dat, ycolname="D3", H="H2"){
+  ggplot(dat) +
+  facet_grid(genedist~ lindist+linbygenedist+edgedist, labeller = label_both) +
+  geom_violin(aes(x=factor(!!sym(H)), y=abs(!!sym(ycolname))), col = "blue")
+}
+```
+
+H2 is a better predictor than H1, in the good scenario
+without any rate variation (top left):
+
+```{r}
+viz_violin(concat_d3, H="H1")
+viz_violin(concat_d3)
+```
+
+Original p-values appear to be uniformly distributed (as expected)
+before Bonferroni correction for the 3 test per triplet
+(top left, under the test assumption of no rate variation, and no reticulation):
+
+```{r}
+viz_violin(concat_d3, ycolname="P") +
+  geom_hline(yintercept=0.05, linetype="dashed", color = "red", size=0.4)
+```
+
+## Visualizing Dstat results
+
+same as with D3, perhaps a bit more pronounced with D:
+H1=1 has small D values (won't be detected), but
+H2=1 has larger values (will be detected )
+
+```{r}
+viz_violin(concat_dstat, ycolname="D", H="H1")
+viz_violin(concat_dstat, ycolname="D")
+```
+
+p-values (no multiple comparison)
+
+```{r}
+viz_violin(concat_dstat, ycolname="P") +
+  geom_hline(yintercept=0.05, linetype="dashed", color = "red", size=0.4)
+```
+
+
+## Visualizing HyDe results
+
+```{r}
+viz_violin(filtered_concat_hyde, ycolname="Pvalue", H="H1")
+viz_violin(filtered_concat_hyde, ycolname="Pvalue")
+```
+
+# line plots for proportion of significant results
+
+The proportion of "significant" results is the proportion of cases
+when the p-value is below some threshold, like 0.05 or 0.01.
+
+- If there is no reticulation, it's the **type 1 error** rate
+- If there is a reticulation, it's the **power**.
+
+## create data sets with proportions
+
+```{r}
+getprop = function(dat, test, ycolname="P", Hnum=2){
+ var2group = c("simid", paste0("H",Hnum))
+ dat %>% group_by(across(all_of(var2group))) %>%
+  summarize(lindist = factor(first(lindist)),
+            linbygenedist = factor(first(linbygenedist)),
+            genedist = factor(first(genedist)),
+            edgedist = factor(first(edgedist)),
+            nsim = n(),
+            test=test,
+            prop_below_005 = mean(!!sym(ycolname) < 0.05),
+            prop_below_001 = mean(!!sym(ycolname) < 0.01),
+            gamma = mean(Gamma1, na.rm=TRUE),
+            .groups="drop")
+}
+prop_h1_h2 = bind_rows(
+  getprop(concat_d3, "D3", Hnum=1:2), # will do both H1 and H2
+  getprop(concat_dstat,       "D" , Hnum=1:2),
+  getprop(filtered_concat_hyde,"HyDe",Hnum=1:2,ycolname="Pvalue"))
+prop_h2 = bind_rows(
+  getprop(concat_d3, "D3"),
+  getprop(concat_dstat,       "D"),
+  getprop(filtered_concat_hyde, "HyDe", ycolname="Pvalue"))
+prop_h1 = bind_rows(
+  getprop(concat_d3, "D3", Hnum=1),
+  getprop(concat_dstat,       "D" , Hnum=1),
+  getprop(filtered_concat_hyde,"HyDe",Hnum=1,ycolname="Pvalue"))
+```
+
+sample sizes are really small with H=3 or higher:
+nsim = average number of ingroup triplets
+(with a particular H1 or H2 value) per simulation setting `simid`.
+It is the same nsim for D, D3, HyDe within each simulation setting.
+We get nsim = 190 (h2), 468 (h1) for h=2,
+but 81,38 for h=3 and lower for h>3.
+
+```{r}
+prop_h1 %>% group_by(H1) %>% summarize(n = sum(nsim)) %>%
+  mutate(n = round(n/(16*3), digits=1)) # 16 simid's and 3 tests
+prop_h2 %>% group_by(H2) %>% summarize(n = sum(nsim)) %>%
+  mutate(n = round(n/(16*3), digits=2)) 
+```
+
+we get this (to be reported in manuscript), where `n` is
+the average number of 4-taxon subnetworks with a specific number
+of reticulations (H1 or H2), across all 16 `simid`'s (this number
+is the same for D, D3 and HyDe because they were run on the same
+simulated networks):
+
+```
+     H1       n
+1     0  2231.9 
+2     1  2193.4 
+3     2   468.6 
+4     3    80.6
+5     4    16.8
+6     5     2.6
+
+     H2       n
+1     0  4096.12 
+2     1   659.44 
+3     2   190.12 
+4     3    37.75
+5     4     8.62
+6     5     1.81
+```
+
+Some simulation settings even had 0 4-taxon subnetworks with
+a particular H. For example: only 9 simid's had some networks with H2=9,
+and only 15 (of the 16) simid's with some networks with H1=9:
+```{r}
+prop_h1 %>% group_by(H1) %>% filter(H1>=5) %>% nrow() # 18
+prop_h2 %>% group_by(H2) %>% filter(H2>=5) %>% nrow() # 9
+```
+conclusion: create a new column `H` with values: "0","1","2","3 or more":
+
+```{r}
+collapseh = function(lev){
+  ifelse(lev %in% c("0","1","2"), lev, "3 or more")
+}
+prop_h2 = mutate(prop_h2, H = factor(collapseh(H2)))
+prop_h1 = mutate(prop_h1, H = factor(collapseh(H1)))
+prop_h1_h2 = mutate(prop_h1_h2,
+                    h1 = factor(collapseh(H1)),
+                    h2 = factor(collapseh(H2)))
+```
+
+average number of 4-taxon subnetworks with the smallest categorization of H:
+
+```{r}
+prop_h1 %>% group_by(H) %>% summarize(n = sum(nsim)) %>%
+  mutate(n = round(n/(16*3), digits=1)) # 16 simid's and 3 tests
+prop_h2 %>% group_by(H) %>% summarize(n = sum(nsim)) %>%
+  mutate(n = round(n/(16*3), digits=1)) 
+```
+
+and we get these average number of 4-taxon subnetworks (per simid):
+```
+for H1:
+  H             n
+1 0         2231.9
+2 1         2193.4
+3 2          468.6
+4 3 or more   99.9 
+
+for H2:
+  H              n
+1 0         4096.1 
+2 1          659.4 
+3 2          190.1 
+4 3 or more   48.2
+```
+
+new column `genelin` for plotting later:
+
+```{r}
+prop_h1_h2$genelin = with(prop_h1_h2,
+  paste0("g:",ifelse(genedist==0," no","yes"),", lg:",ifelse(linbygenedist==0," no","yes")))
+prop_h1$genelin = with(prop_h1,
+  paste0("g:",ifelse(genedist==0," no","yes"),", lg:",ifelse(linbygenedist==0," no","yes")))
+prop_h2$genelin = with(prop_h2,
+  paste0("g:",ifelse(genedist==0," no","yes"),", lg:",ifelse(linbygenedist==0," no","yes")))
+```
+
+sometimes we will need to group the proportions across
+all rows of a given simid and a given test, across all
+values of H=3 and higher.
+
+```{r}
+groupprop = function(dat){ #, H="H"){
+ dat %>%
+  mutate(sum_below_005 = prop_below_005 * nsim,
+         sum_below_001 = prop_below_001 * nsim,
+         sum_gamma     = gamma * nsim) %>%
+  # group_by(simid,test,across(starts_with(H) & ends_with(H))) %>%
+  summarize(lindist = first(lindist),
+            genelin = first(genelin),
+            linbygenedist = first(linbygenedist),
+            genedist = first(genedist),
+            edgedist = first(edgedist),
+            nsim = sum(nsim),
+            sum_below_005 = sum(sum_below_005),
+            sum_below_001 = sum(sum_below_001),
+            sum_gamma     = sum(sum_gamma),
+            .groups="keep") %>%
+  mutate(prop_below_005 = sum_below_005 / nsim,
+         prop_below_001 = sum_below_001 / nsim,
+         gamma         = sum_gamma / nsim) %>%
+  select(!starts_with("sum_"))
+}
+# to check:
+# prop_h2 %>% group_by(simid,test,H) %>% groupprop %>% select(simid,test,H,nsim,starts_with("prop"))
+```
+
+
+sanity check: there should be an equal number of 3-ingroup taxon sets across tests.
+
+```{r, eval=F}
+tmp = filter(prop_h1, H=="3 or more") %>% select(simid, H1, test, nsim) %>% arrange(simid, H1)
+n = nrow(tmp); tmp=tmp$nsim
+stopifnot(tmp[seq(1,n,by=3)] == tmp[seq(2,n,by=3)])
+stopifnot(tmp[seq(1,n,by=3)] == tmp[seq(3,n,by=3)])
+tmp = filter(prop_h2, H=="3 or more") %>% select(simid, H2, test, nsim) %>% arrange(simid, H2)
+n = nrow(tmp); tmp=tmp$nsim
+stopifnot(tmp[seq(1,n,by=3)] == tmp[seq(2,n,by=3)])
+stopifnot(tmp[seq(1,n,by=3)] == tmp[seq(3,n,by=3)])
+rm(tmp,n)
+```
+
+
+## logistic reg to quantify the effect of each type of rate variation
+
+
+```{r, eval=F}
+dolinearreg = function(dat, message=""){
+  cat("-----\n", message, "\n")
+  cat("type 1 error (H2=0), simple effects:\n")
+  fit = glm(prop_below_005 ~ lindist + linbygenedist + genedist + edgedist,
+          family=binomial, weights=nsim, data=subset(dat,H=="0"))
+  print(summary(fit)$coefficients)
+  print(drop1(fit, test="Chisq"))
+  cat("\ntype 1 error, with some interaction effects:\n")
+  fit = update(fit, . ~ . + lindist:edgedist)
+  print(summary(fit)$coefficients)
+  print(drop1(fit, test="LRT"))
+  cat("\npower (H2 = 1 or more), simple effects:\n")
+  fit = glm(prop_below_005 ~ H + lindist + linbygenedist + genedist + edgedist,
+          family=binomial, weights=nsim, data=subset(dat, H!="0"))
+  print(summary(fit)$coefficients)
+  print(drop1(fit, test="Chisq"))
+}
+```
+
+```{r, eval=F}
+dolinearreg(subset(prop_h2, test=="D"), "ABBA-BABA test")
+dolinearreg(subset(prop_h2, test=="D3"), "D3 test")
+dolinearreg(subset(prop_h2, test=="HyDe"), "HyDe test")
+```
+
+Some conclusions about type-1 error (when H2 = 0):
+
+- D, D3, HyDe: lineage rates have the biggest effect on type-1 error by far.
+- D, D3: edge rates decrease type-1 error a little,
+  especially in the absence of variation across lineages.
+- D: variation across genes (and lineage-by-gene) has no effect.
+- D3: lineage-by-gene rate variation decreases type-1 error.
+  HyDe: lineage-by-gene rate variation increases type-1 error.
+
+some conclusions about power (when H2=1, 2, or 3 or more):
+
+- D, D3: power decreases when H2 increases.
+  HyDe: power increases when H2 increases.
+- D: lineage-by-gene rate variation seems to decrease power,
+  other types don't affect power.
+- D3: variation across lineages increases power, other types decrease power.
+- HyDe: all types of rate variation increase power (except across genes),
+  but mostly across lineages.
+
+
+## line plots with proportion: type 1 error
+
+```{r}
+fillval = c('#f7c052', '#9fe2ff') # '#E69F00', '#56B4E9'
+colval = c('#F8766D','#619CFF')
+```
+
+set choice of shapes to code for 2 variables rate variation
+across genes and combination gene x lineage:
+````{r}
+genelin_shape = c(
+  "g: no, lg: no" = 21,
+  "g:yes, lg: no" = 23,
+  "g: no, lg:yes" = 24,
+  "g:yes, lg:yes" = 25
+)
+```
+
+considering H1=0:
+
+```{r}
+plot_type1error = function(dat, ylab, seed){
+  ggplot(dat, aes(y=prop_below_005, x=test)) +
+  geom_point(aes(color=edgedist, shape=genelin, fill=lindist),
+             alpha=0.8, stroke=1.2, position=position_jitterdodge(seed=seed,
+                  jitter.width=0.1, dodge.width=0.7), size=2)+
+  scale_shape_manual(values=genelin_shape) +
+  scale_fill_manual(values=fillval, labels=c("no","yes")) +
+  scale_color_manual(values=colval, labels=c("no","yes")) +
+  guides(fill = guide_legend(order=1, title="rate variation\nacross:\nlineages",
+              override.aes=list(fill=fillval,color=fillval,shape=21,stroke=0,size=3)),
+         color = guide_legend(order=2, title="edges",
+              override.aes = list(color=colval, shape=21)),
+         shape = guide_legend(order=3, title="genes and\nlineages x gene",
+              override.aes = list(stroke=0.5))) +
+  theme_minimal() +
+  scale_y_continuous(limits=c(0,NA), breaks=c(0,0.05,0.2,0.4, 0.6,0.8),
+                     minor_breaks=NULL, name=ylab) +
+  xlab("")
+}
+```
+
+now apply our function to various filtered data:
+
+```{r}
+plot_type1error(filter(prop_h1, H=="0"), ylab="Type-1 error (h=0)", seed=27)
+ggsave("fig_type1error_H1.pdf", height=4, width=6)
+```
+
+```{r}
+#get type-1 error rate when no rate variation for each test
+filter(prop_h1, H=="0", simid=="1")
+```
+
+
+average, mean, & max number of subnetworks per point in this last plot:
+```{r}
+type1_h1 = filter(prop_h1, H=="0") %>% group_by(simid,test) %>% groupprop
+max(type1_h1$nsim) #2506
+min(type1_h1$nsim) #2040
+mean(type1_h1$nsim) #2231.938
+```
+
+
+considering H1>0 but H2=0:
+
+```{r}
+plot_type1error(
+  filter(prop_h1_h2, h2=="0" & h1!="0") %>% group_by(simid,test) %>% groupprop,
+  ylab="Type-1 error (h>0 and h'=0)", seed=27
+)
+ggsave("fig_type1error_H2.pdf", height=4, width=6)
+```
+```{r}
+linD3= filter(prop_h1_h2, h2=="0" & h1!="0", test == "D3", lindist == "0.7") %>% group_by(simid,test) %>% groupprop
+mean(linD3$prop_below_005)
+```
+
+
+
+get type-1 error rate when no rate variation for each test
+```{r}
+filter(prop_h1_h2, h2=="0" & h1!="0", simid=="1") %>% group_by(test) %>% groupprop
+```
+
+average, mean, & max number of subnetworks per point in this last plot:
+```{r}
+filter(prop_h1_h2, h2=="0" & h1!="0") %>% summarize(n = sum(nsim)) %>%
+  mutate(n = round(n/(16*3), digits=1)) # 1453.2	= 4093 - 2640
+
+type1_h2 = filter(prop_h1_h2, H2=="0", H1>"0") %>% group_by(simid,test) %>% groupprop
+max(type1_h2$nsim) #2191
+min(type1_h2$nsim) #1480
+mean(type1_h2$nsim) #1864.188
+```
+
+## line plots with proportion: power
+
+```{r}
+plot_power = function(dat, ylab, xlab, seed){
+  ggplot(dat, aes(y=prop_below_005, x=H)) +
+  facet_grid(~ test) +
+  geom_point(aes(color=edgedist, shape=genelin, fill=lindist),
+             alpha=0.8, stroke=1.2, position=position_jitterdodge(seed=seed,
+                  jitter.width=0.1, dodge.width=0.7))+
+  scale_shape_manual(values=genelin_shape) +
+  scale_fill_manual(values=fillval, labels=c("no","yes")) +
+  scale_color_manual(values=colval, labels=c("no","yes")) +
+  guides(fill = guide_legend(order=1, title="rate variation\nacross: lineages\n",
+              override.aes=list(fill=fillval,color=fillval,shape=21,stroke=0,size=2),
+              nrow=2),
+         color = guide_legend(order=2, title="edges", nrow=2,
+              override.aes = list(color=colval, shape=21)),
+         shape = guide_legend(order=3, title="genes and\nlineages x gene",
+              override.aes = list(stroke=0.5), nrow=2)) +
+  theme_minimal() + theme(legend.position="bottom", legend.title.align=0) +
+  theme(strip.background=element_rect(fill=NA)) +
+  scale_y_continuous(limits=c(0,1), breaks=c(0,0.05,0.2,0.4, 0.6,0.8,1),
+                     minor_breaks=NULL, name=ylab) +
+  xlab(xlab)
+}
+```
+
+now apply our plotting function considering H1>0:
+
+```{r}
+plot_power(
+  filter(prop_h1, H!="0") %>% group_by(simid,test,H) %>% groupprop,
+  ylab = "Power: when h>0", xlab = "number of hybridizations h", seed=32)
+ggsave("fig_power_H1.pdf", height=6, width=9)
+```
+
+get min, max, avg per hybridization # category for last fig:
+```{r}
+#S1 figure
+powerh1 = filter(prop_h1, H!="0") %>% group_by(simid,test,H) %>% groupprop
+powerh1_h1 = powerh1 %>% filter(H=="1")
+max(powerh1_h1$nsim) #2519
+min(powerh1_h1$nsim) #1813
+mean(powerh1_h1$nsim) #2193.375
+
+powerh1_h2 = powerh1 %>% filter(H=="2")
+max(powerh1_h2$nsim) #629
+min(powerh1_h2$nsim) #339
+mean(powerh1_h2$nsim) #468.625
+
+powerh1_h3 = powerh1 %>% filter(H=="3 or more")
+max(powerh1_h3$nsim) #212
+min(powerh1_h3$nsim) #22
+mean(powerh1_h3$nsim) #99.9375
+```
+
+considering H2>0:
+
+```{r}
+plot_power(
+  filter(prop_h2, H!="0") %>% group_by(simid,test,H) %>% groupprop,
+  ylab = "Power: when h'>0", xlab = "number of hybridizations h'", seed=1)
+ggsave("fig_power_H2.pdf", height=6, width=9)
+```
+
+
+get min, max, avg per hybridization # category for last fig:
+```{r}
+#getting stats for fig6: power when h'1>0
+powerh2 = filter(prop_h2, H!="0") %>% group_by(simid,test,H) %>% groupprop
+powerh2_h1 = powerh2 %>% filter(H=="1")
+max(powerh2_h1$nsim) #795
+min(powerh2_h1$nsim) #476
+mean(powerh2_h1$nsim) #659.4375
+
+powerh2_h2 = powerh2 %>% filter(H=="2")
+max(powerh2_h2$nsim) #256
+min(powerh2_h2$nsim) #105
+mean(powerh2_h2$nsim) #190.125
+
+powerh2_h3 = powerh2 %>% filter(H=="3 or more")
+max(powerh2_h3$nsim) #116
+min(powerh2_h3$nsim) #2
+mean(powerh2_h3$nsim) #48.1875
+```
+
+```{r}
+dh2h2power = powerh2_h2 %>% filter(test=="D")
+min(dh2h2power$prop_below_005)
+max(dh2h2power$prop_below_005)
+hydeh2h2power = powerh2_h2 %>% filter(test=="HyDe")
+min(hydeh2h2power$prop_below_005)
+max(hydeh2h2power$prop_below_005)
+d3h2h2power = powerh2_h2 %>% filter(test=="D3")
+min(d3h2h2power$prop_below_005)
+max(d3h2h2power$prop_below_005)
+```
+
+
+
+# find interesting simulated networks for illustration
+
+Note: replicates were chosen for illustration, then the rate simulation
+(and gene tree + sequence generation) was re-run to extract more info
+(specific lineage rates), causing all alignments ... and p-values to change.
+Before re-running gene trees and sequences, all non-significant p-values
+were typically higher (from intentional filtering to limit the number of options).
+After re-running gene trees and sequences, p-values changed, but not qualitatively:
+the non-significant p-values remained non-significant.
+The significant p-values were still tiny.
+
+## example with H1=1 and H2=0
+
+example with h=1 or higher originally but h=0 after shrinking
+2 and 3 cycles (H1>0, H2=0), without any rate variation, and
+for which all tests are non significant yet gamma was large
+and there were enough SNPs:
+
+```{r}
+concat_dstat %>% filter(H1==1 & H2==0  & simid==1 & P>0.94 & ABBAcount>400) %>%
+  select(...1, starts_with("taxa"), Rep, ends_with("dist"), simid)
+# choice below: because it has gamma > 0.4 for h, before shrinking 2/3 cycles.
+concat_dstat %>% filter(H1==1 & H2==0  & simid==1 & Rep==46 & taxa2=="t4" & taxa3=="t1" & taxa4=="t10") %>%
+  select(...1, starts_with("taxa"), Rep, P, simid) # p was 0.55, then 0.94
+```
+
+simid 1, Rep 44 and 46 and specific taxa: have large p-value in both cases
+(originally both p-values > 0.45, then 0.13 for rep 44, 0.75 for rep 46).
+
+```{r}
+concat_d3 %>%
+  filter(simid==1 & ((Rep==44 & taxonset=="t15,t3,t7") |
+                     (Rep==46 & taxonset=="t1,t10,t4")))
+```
+
+Conclusion: look at the following networks and taxon sets,
+in simid1 (no rate variation):
+
+- rep 44: t16 t3 t7 t15
+- rep 46: t8  t4 t1 t10
+
+## examples with H2=1 versus H2>1
+
+to "see" why reticulations may cancel each other, such that
+increasing H2 may decrease the power to detect the presence
+of reticulations.
+
+```{r}
+concat_dstat %>%
+  filter(H1==H2 & H2==1 & simid==1 & ABBAcount>400 & P<0.05 & Gamma1>0.4 & Gamma1<0.45) %>%
+  select(...1, Rep, starts_with("taxa"), P, starts_with("Gamma")) %>% tail
+concat_dstat %>%
+  filter(H1==H2 & H2==2 & simid==1 & ABBAcount>400 & P>0.3 & Gamma1>0.4 & Gamma2>0.4) %>%
+  select(...1, Rep, starts_with("taxa"), P, starts_with("Gamma")) %>% head
+```
+
+p-values from D: p was 0.80 then 0.57 for t8,t4,t11,t10
+
+Let's look at the p-value from D3 on the same data:
+large (was 0.373 then > 0.5) in rep 46 (h=2)
+and tiny (<0.0001) in rep 96 (h=1).
+
+```{r}
+concat_d3 %>%
+  filter(simid==1 & ((Rep==46 & taxonset=="t10,t11,t4") |  # p large
+                     (Rep==96 & taxonset=="t10,t4,t7" ) )) # p tiny
+```
+
+Conclusion: look at the following networks and taxon sets,
+in simid1 (no rate variation):
+
+- rep 96 (h=1): t3 t7 t4  t10
+- rep 46 (h=2): t8 t4 t11 t10
+  After looking at network in rep 46: the 2 reticulations are in opposite directions,
+  and "cross" each other temporally, so they don't get removed when we shrink
+  2- and 3- cycles, but they are both between "sister" species.
+  The problem is *not* that they hide each other, but instead that they
+  are between *sister* species: just like for those that form 3-cycles.
+
+So: find another example of reticulations that form larger cycles,
+and hide each other. From code below: look at rep 90 in simid 1, set t2,t7,t1,t5.
+
+```{r}
+concat_dstat %>%
+  filter(H2==3 & simid==1 & ABBAcount>300 & P>0.15 & Gamma1>0.4 & Gamma1<0.45) %>%
+  select(...1, Rep, starts_with("taxa"), P, starts_with("Gamma")) %>% tail # p was 0.74 then 0.17 for t2,t7,t1,t5
+concat_d3 %>%
+  filter(simid==1 & (Rep==90 & taxonset=="t1,t5,t7")) # p was 0.38 then 0.19
+```
+
+from code below, look at rep 90 in simid 1, specific sets:
+
+```{r}
+concat_dstat %>%
+  filter(H2==2 & simid==1 & ABBAcount>300 & P>0.3 & Gamma1>0.4 & Gamma1<0.45) %>%
+  select(...1, Rep, starts_with("taxa"), P, starts_with("Gamma")) %>% tail(n=10)
+# p=0.33 and 0.31, then 0.56 and 0.94, for sets t2,t10,t7,t1 and t2,t8,t7,t5
+concat_d3 %>%
+  filter(simid==1, Rep==90, taxonset %in% c("t1,t10,t7", "t5,t7,t8")) # p>0.7 for both
+```
+
+extract p-value from HyDe:
+```{r}
+filtered_concat_hyde %>%
+  filter(simid==1, (Rep==90 & taxonset %in% c("t1,t10,t7", "t5,t7,t8")) |
+                   (Rep==46 & taxonset %in% c("t1,t10,t4", "t10,t11,t4"))) %>%
+  select(Rep, P1,Hybrid,P2, taxonset, H1, H2, origPvalue, Pvalue)
+```
+p-values:
+rep 46: .58,1 then 1,0.63  
+rep 90: 0.068 for t1,t10,t7, 0.174 for t5,t7,t8; then 0.13,0.46
