@@ -448,7 +448,7 @@ function summarize_hyde_dstat_d3(paramset::AbstractString)
     if !isfile("$(paramset)/concat_d3.csv")
         concat_d3 = DataFrame(taxa1= String[], taxa2= String[], taxa3= String[], taxa4= String[], Rep= Int[],
                     TotalSites= Int[], D13 = Int[], D23= Int[], 
-                    D3= Float64[], D_sd= Float64[], Z= Float64[], P= Float64[], 
+                    D3= Float64[], D3_sd= Float64[], Z= Float64[], P= Float64[], 
                     H1=Int[], H2=Int[], Gamma1=Float64[], Gamma2=Float64[], Gamma3=Float64[], D3_Nonsister =AbstractString[])
 
         for (root, dirs, files) in walkdir(paramset)
@@ -674,7 +674,7 @@ function simulation_pipeline(ntaxa::Int, ngenes::Int, nsites::Int,
 
             d3_df = DataFrame(taxa1= String[], taxa2= String[], taxa3= String[], taxa4= String[], Rep= Int[],
                         TotalSites= Int[], D13 = Int[], D23= Int[], 
-                        D3= Float64[], D_sd= Float64[], Z= Float64[], P= Float64[], 
+                        D3= Float64[], D3_sd= Float64[], Z= Float64[], P= Float64[], 
                         H1=Int[], H2=Int[], Gamma1=Float64[], Gamma2=Float64[], Gamma3=Float64[], D3_Nonsister=AbstractString[])
             allowmissing!(d3_df)
 
