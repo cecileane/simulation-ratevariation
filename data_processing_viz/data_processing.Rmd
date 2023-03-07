@@ -191,7 +191,7 @@ alldatasets_hyde = mutate(alldatasets_hyde, GammaDiff=Gamma1-HyDeGamma)
 
 #create filtered hyde dataset that corrects for all possible iterations of a triplet and gives an adjusted pval col w Bonferroni correction
 filtered_concathyde = alldatasets_hyde %>% rowwise() %>% mutate(taxonset = paste(sort(c(P1, Hybrid, P2)), collapse=","))
-filtered_concathyde = filtered_concathyde %>% group_by(taxonset, Rep, simid) %>% arrange(Pvalue, desc=TRUE) %>% slice(1) %>% mutate(adjPvalue = min(3*Pvalue,1))
+filtered_concathyde = filtered_concathyde %>% group_by(taxonset, Rep, simid) %>% arrange(Pvalue) %>% slice(1) %>% mutate(adjPvalue = min(3*Pvalue,1))
 
 #rename columns for Pvals
 filtered_concathyde = filtered_concathyde %>% rename(Pvalue = adjPvalue, origPvalue = Pvalue)
