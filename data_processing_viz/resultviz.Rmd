@@ -1,7 +1,7 @@
 ---
-title: "updatedD3viz.Rmd"
+title: "result visualization"
 output: html_document
-date: "2022-09-20"
+date: "2023-05"
 ---
 
 ```{r setup, include=FALSE}
@@ -15,7 +15,9 @@ library(forcats)
 options(show.signif.stars=F)
 ```
 
-# Load in datasets
+# load & prepare datasets
+
+load raw results:
 
 ```{r, message=F}
 concat_d3 = read_csv("../output/alldatasets_d3.csv", col_types = cols(Rep = col_integer()))
@@ -30,65 +32,8 @@ stopifnot(nrow(concat_dstat) == nrow(concat_d3)) # 79902
 stopifnot(nrow(concat_dstat) == nrow(filtered_concat_hyde)) # 79902
 ```
 
-# violin plots
-
-## Visualizing D3 results
-
-```{r}
-viz_violin = function(dat, ycolname="D3", H="H2"){
-  ggplot(dat) +
-  facet_grid(genedist~ lindist+linbygenedist+edgedist, labeller = label_both) +
-  geom_violin(aes(x=factor(!!sym(H)), y=abs(!!sym(ycolname))), col = "blue")
-}
-```
-
-H2 is a better predictor than H1, in the good scenario
-without any rate variation (top left):
-
-```{r}
-viz_violin(concat_d3, H="H1")
-viz_violin(concat_d3)
-```
-
-Original p-values appear to be uniformly distributed (as expected)
-before Bonferroni correction for the 3 test per triplet
-(top left, under the test assumption of no rate variation, and no reticulation):
-
-```{r}
-viz_violin(concat_d3, ycolname="P") +
-  geom_hline(yintercept=0.05, linetype="dashed", color = "red", size=0.4)
-```
-
-## Visualizing Dstat results
-
-same as with D3, perhaps a bit more pronounced with D:
-H1=1 has small D values (won't be detected), but
-H2=1 has larger values (will be detected )
-
-```{r}
-viz_violin(concat_dstat, ycolname="D", H="H1")
-viz_violin(concat_dstat, ycolname="D")
-```
-
-p-values (no multiple comparison)
-
-```{r}
-viz_violin(concat_dstat, ycolname="P") +
-  geom_hline(yintercept=0.05, linetype="dashed", color = "red", size=0.4)
-```
-
-
-## Visualizing HyDe results
-
-```{r}
-viz_violin(filtered_concat_hyde, ycolname="Pvalue", H="H1")
-viz_violin(filtered_concat_hyde, ycolname="Pvalue")
-```
-
-# line plots for proportion of significant results
-
-The proportion of "significant" results is the proportion of cases
-when the p-value is below some threshold, like 0.05 or 0.01.
+calculate the proportion of "significant" results, that is: the proportion of
+cases when the p-value is below some threshold, like 0.05 or 0.01.
 
 - If there is no reticulation, it's the **type 1 error** rate
 - If there is a reticulation, it's the **power**.
@@ -123,6 +68,8 @@ prop_h1 = bind_rows(
   getprop(concat_dstat,       "D" , Hnum=1),
   getprop(filtered_concat_hyde,"HyDe",Hnum=1,ycolname="Pvalue"))
 ```
+
+## sample sizes per group, after separating between h values
 
 sample sizes are really small with H=3 or higher:
 nsim = average number of ingroup triplets
@@ -265,7 +212,7 @@ rm(tmp,n)
 ```
 
 
-## logistic reg to quantify the effect of each type of rate variation
+# logistic regression to quantify the effect of each type of rate variation
 
 
 ```{r, eval=F}
@@ -314,7 +261,7 @@ some conclusions about power (when H2=1, 2, or 3 or more):
   but mostly across lineages.
 
 
-## line plots with proportion: type 1 error
+# visualize type-1 error
 
 ```{r}
 fillval = c('#f7c052', '#9fe2ff') # '#E69F00', '#56B4E9'
@@ -323,7 +270,7 @@ colval = c('#F8766D','#619CFF')
 
 set choice of shapes to code for 2 variables rate variation
 across genes and combination gene x lineage:
-````{r}
+```{r}
 genelin_shape = c(
   "g: no, lg: no" = 21,
   "g:yes, lg: no" = 23,
@@ -332,7 +279,7 @@ genelin_shape = c(
 )
 ```
 
-considering H1=0:
+## full data in a single plot
 
 ```{r}
 plot_type1error = function(dat, ylab, seed){
@@ -356,18 +303,23 @@ plot_type1error = function(dat, ylab, seed){
 }
 ```
 
-now apply our function to various filtered data:
+now apply our function to various filtered data.  
+below: h=0, full data set (fig.4 in v1)
 
-```{r}
+```{r, eval=F}
 plot_type1error(filter(prop_h1, H=="0"), ylab="Type-1 error (h=0)", seed=27)
 ggsave("fig_type1error_H1.pdf", height=4, width=6)
 ```
 
+type-1 error rate in the complete absence of rate variation, for each test:
 ```{r}
-#get type-1 error rate when no rate variation for each test
-filter(prop_h1, H=="0", simid=="1")
+filter(prop_h1, H=="0", simid=="1") %>% select(nsim, test, starts_with("prop"))
 ```
 
+    nsim test  prop_below_005 prop_below_001
+    2272 D3            0.0489        0.00792
+    2272 D             0.0550        0.00968
+    2272 HyDe          0.0964        0.0379 
 
 average, mean, & max number of subnetworks per point in this last plot:
 ```{r}
@@ -377,27 +329,34 @@ min(type1_h1$nsim) #2040
 mean(type1_h1$nsim) #2231.938
 ```
 
+below: h2=0 but h1>0, full data set (fig.5 in v1)
 
-considering H1>0 but H2=0:
-
-```{r}
+```{r, eval=F}
 plot_type1error(
   filter(prop_h1_h2, h2=="0" & h1!="0") %>% group_by(simid,test) %>% groupprop,
   ylab="Type-1 error (h>0 and h'=0)", seed=27
 )
 ggsave("fig_type1error_H2.pdf", height=4, width=6)
 ```
+
 ```{r}
-linD3= filter(prop_h1_h2, h2=="0" & h1!="0", test == "D3", lindist == "0.7") %>% group_by(simid,test) %>% groupprop
-mean(linD3$prop_below_005)
+linD3= filter(prop_h1_h2, h2=="0" & h1!="0", test == "D3", lindist == "0.7") %>%
+  group_by(simid,test) %>% groupprop
+mean(linD3$prop_below_005) # 0.7777702
 ```
 
 
 
 get type-1 error rate when no rate variation for each test
 ```{r}
-filter(prop_h1_h2, h2=="0" & h1!="0", simid=="1") %>% group_by(test) %>% groupprop
+filter(prop_h1_h2, h2=="0" & h1!="0", simid=="1") %>% group_by(test) %>%
+  groupprop  %>% select(test, nsim, starts_with("prop"))
 ```
+
+    test   nsim prop_below_005 prop_below_001
+    D      2100         0.0490        0.00810
+    D3     2100         0.0571        0.02   
+    HyDe   2100         0.0743        0.0295
 
 average, mean, & max number of subnetworks per point in this last plot:
 ```{r}
@@ -410,7 +369,73 @@ min(type1_h2$nsim) #1480
 mean(type1_h2$nsim) #1864.188
 ```
 
-## line plots with proportion: power
+## separate, less-crowded plots with/without by-edge variation
+
+```{r}
+# fillval = c(, '#9fe2ff') # '#E69F00', '#56B4E9'
+colval_v2 = c('#f7c052','#619CFF') # '#F8766D'
+genelin_shape_v2 = c(
+  "g: no, lg: no" = 1,
+  "g:yes, lg: no" = 5,
+  "g: no, lg:yes" = 24,
+  "g:yes, lg:yes" = 25
+)
+plot_type1error_v2 = function(dat, ylab, ed, seed){
+  ggplot(filter(dat, edgedist==ed), aes(y=prop_below_005, x=test)) +
+  geom_point(aes(color=lindist, fill=lindist, shape=genelin),
+             alpha=0.8, stroke=1.2, position=position_jitterdodge(seed=seed,
+                  jitter.width=0.1, dodge.width=0.7), size=1.5)+
+  scale_shape_manual(values=genelin_shape_v2) +
+  scale_color_manual(values=colval_v2, labels=c("no","yes")) +
+  scale_fill_manual( values=colval_v2) +
+  guides(color = guide_legend(order=1, title="rate variation\nacross:\nlineages"),
+         shape = guide_legend(order=2, title="genes and\nlineages x gene",
+              override.aes = list(stroke=0.5, fill="black")),
+         fill=guide_legend(order=3, label=F, override.aes=list(fill=NA, color=NA),
+              title=paste0("with",ifelse(ed==0,"out","")," residual\nedge rate\nvariation"),
+              keyheight=0)
+         ) +
+  theme_minimal() +
+  scale_y_continuous(limits=c(0,NA), breaks=c(0,0.05,0.2,0.4, 0.6,0.8),
+                     minor_breaks=NULL, name=ylab) +
+  xlab("")
+}
+```
+
+fig.4 in v2: h=0, no residual (across edges) rate variation
+
+```{r}
+plot_type1error_v2(filter(prop_h1, H=="0"), ed=0,
+                   ylab="Type-1 error rate (h=0)", seed=34)
+ggsave("fig_type1error_H1_edge0.pdf", height=4, width=6)
+```
+
+fig.5 in v2: h>0 but h'=0, no residual (edge) rate variation
+
+```{r, eval=F}
+plot_type1error_v2(
+  filter(prop_h1_h2, h2=="0" & h1!="0") %>% group_by(simid,test) %>% groupprop,
+  ed=0, ylab="Type-1 error rate (h>0 and h'=0)", seed=34
+)
+ggsave("fig_type1error_H2_edge0.pdf", height=4, width=6)
+```
+
+supplementary figures with residual (across edges) rate variation
+
+```{r}
+plot_type1error_v2(filter(prop_h1, H=="0"), ed=0.7,
+                   ylab="Type-1 error rate (h=0)", seed=34)
+ggsave("fig_type1error_H1_edge07.pdf", height=4, width=6)
+plot_type1error_v2(
+  filter(prop_h1_h2, h2=="0" & h1!="0") %>% group_by(simid,test) %>% groupprop,
+  ed=0.7, ylab="Type-1 error rate (h>0 and h'=0)", seed=34
+)
+ggsave("fig_type1error_H2_edge07.pdf", height=4, width=6)
+```
+
+# visualize power
+
+## full data, all in 1 busy plot
 
 ```{r}
 plot_power = function(dat, ylab, xlab, seed){
@@ -508,7 +533,60 @@ min(d3h2h2power$prop_below_005)
 max(d3h2h2power$prop_below_005)
 ```
 
+## separate plots with/without by-edge variation
 
+```{r}
+plot_power_v2 = function(dat, ylab, xlab, ed, seed){
+  ggplot(filter(dat, edgedist==ed), aes(y=prop_below_005, x=H)) +
+  facet_grid(~ test) +
+  geom_point(aes(color=lindist, shape=genelin, fill=lindist),
+             alpha=0.8, stroke=1.2, position=position_jitterdodge(seed=seed,
+                  jitter.width=0.1, dodge.width=0.7))+
+  scale_shape_manual(values=genelin_shape_v2) +
+  scale_fill_manual( values=colval_v2, labels=c("no","yes")) +
+  scale_color_manual(values=colval_v2) +
+  guides(color = guide_legend(order=1, title="rate variation\nacross: lineages", nrow=2),
+         shape = guide_legend(order=2, title="genes and\nlineages x gene",
+              override.aes = list(stroke=0.5, fill="black"), nrow=2),
+         fill = guide_legend(order=3, label=F, override.aes=list(fill=NA, color=NA),
+              title=paste0("with",ifelse(ed==0,"out","")," residual\nedge rate variation"),
+              nrow=2)
+         ) +
+  theme_minimal() +
+  theme(legend.position="bottom", legend.title.align=0,
+        legend.margin = margin(t=0,r=10,b=0,l=10)) +
+  theme(strip.background=element_rect(fill=NA)) +
+  scale_y_continuous(limits=c(0,1), breaks=c(0,0.05,0.2,0.4, 0.6,0.8,1),
+                     minor_breaks=NULL, name=ylab) +
+  xlab(xlab)
+}
+```
+
+without residual rate variation across edges:
+```{r}
+plot_power_v2(
+  filter(prop_h1, H!="0") %>% group_by(simid,test,H) %>% groupprop,
+  ed=0, ylab="Power: when h>0", xlab="number of hybridizations h", seed=32)
+ggsave("fig_power_H1_edge0.pdf", height=6, width=9)
+
+plot_power_v2(
+  filter(prop_h2, H!="0") %>% group_by(simid,test,H) %>% groupprop,
+  ed=0, ylab="Power: when h'>0", xlab="number of hybridizations h'", seed=1)
+ggsave("fig_power_H2_edge0.pdf", height=6, width=9)
+```
+
+with residual rate variation across edges:
+```{r}
+plot_power_v2(
+  filter(prop_h1, H!="0") %>% group_by(simid,test,H) %>% groupprop,
+  ed=0.7, ylab="Power: when h>0", xlab="number of hybridizations h", seed=32)
+ggsave("fig_power_H1_edge07.pdf", height=6, width=9)
+
+plot_power_v2(
+  filter(prop_h2, H!="0") %>% group_by(simid,test,H) %>% groupprop,
+  ed=0.7, ylab="Power: when h'>0", xlab="number of hybridizations h'", seed=1)
+ggsave("fig_power_H2_edge07.pdf", height=6, width=9)
+```
 
 # find interesting simulated networks for illustration
 
